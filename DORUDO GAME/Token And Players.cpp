@@ -1,27 +1,31 @@
 // DORUDO - Doraemon-themed Ludo
 // STEP 1 (Minahil): Token and Player
 // STEP 2 (Fatima): Board Data
+// STEP 3 (Minahil): Dice and Game Setup
 
 #include <iostream>
 #include <string>
+#include <cstdlib>
+#include <ctime>
 using namespace std;
 
-const int TOKENS_PER_PLAYER = 4;   
+const int TOKENS_PER_PLAYER = 4;
+
 const int LAST_TRACK_STEP = 51;
 const int FINAL_STEP = 57;
 
 enum Character { DORAEMON, NOBITA, SHIZUKA, GIAN };
 
 struct Token {
-    int stepsTaken;      
+    int stepsTaken;
 };
 
 struct Player {
-    string name;                       
-    Character character;               
-    Token tokens[TOKENS_PER_PLAYER];   
-    bool finished;                     
-    int rank;                          
+    string name;
+    Character character;
+    Token tokens[TOKENS_PER_PLAYER];
+    bool finished;
+    int rank;
 };
 
 Token createToken() {
@@ -171,22 +175,90 @@ int getBoardPosition(Character character, int stepsTaken)
     return -3;
 }
 
-int main() {
-    Player p1 = createPlayer("Minahil", DORAEMON);
-    Player p2 = createPlayer("Fatima", NOBITA);
+const int MAX_PLAYERS = 4;
 
-    cout << "=== Two new players ===" << endl;
-    printPlayer(p1);
-    printPlayer(p2);
+int rollDice()
+{
+    return rand() % 6 + 1;
+}
 
-    p1.tokens[0].stepsTaken = 1;
-    p1.tokens[1].stepsTaken = 30;
-    p1.tokens[2].stepsTaken = 54;
-    p1.tokens[3].stepsTaken = FINAL_STEP;
+Character pickRandomCharacter(bool used[])
+{
+    int number = rand() % 4;
 
-    cout << "=== After moving Minahil's tokens ===" << endl;
-    printPlayer(p1);
-    cout << "Completed tokens: " << countCompletedTokens(p1) << endl;
+    while (used[number])
+    {
+        number = rand() % 4;
+    }
+
+    used[number] = true;
+    return (Character)number;
+}
+
+void setupGame(Player players[], string names[], int numberOfPlayers)
+{
+    bool used[4] = { false, false, false, false };
+
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        Character c = pickRandomCharacter(used);
+        players[i] = createPlayer(names[i], c);
+    }
+}
+
+int nextPlayer(Player players[], int numberOfPlayers, int currentPlayer)
+{
+    int next = currentPlayer;
+
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        next = (next + 1) % numberOfPlayers;
+
+        if (!players[next].finished)
+            return next;
+    }
+
+    return currentPlayer;
+}
+
+int main()
+{
+    srand(time(0));
+
+    int numberOfPlayers = 0;
+    while (numberOfPlayers < 2 || numberOfPlayers > MAX_PLAYERS)
+    {
+        cout << "How many players (2 to 4)? ";
+        cin >> numberOfPlayers;
+    }
+
+    string names[MAX_PLAYERS];
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        cout << "Name of player " << i + 1 << ": ";
+        cin >> names[i];
+    }
+
+    Player players[MAX_PLAYERS];
+    setupGame(players, names, numberOfPlayers);
+
+    cout << endl << "--- Players and their characters ---" << endl;
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        cout << players[i].name << " is "
+            << characterName(players[i].character)
+            << " (" << characterColour(players[i].character) << ")" << endl;
+    }
+
+    cout << endl << "--- Testing the turns ---" << endl;
+    int current = 0;
+    for (int turn = 1; turn <= 8; turn++)
+    {
+        int dice = rollDice();
+        cout << "Turn " << turn << ": " << players[current].name
+            << " rolled " << dice << endl;
+        current = nextPlayer(players, numberOfPlayers, current);
+    }
 
     return 0;
 }
