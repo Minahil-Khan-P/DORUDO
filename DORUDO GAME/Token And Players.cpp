@@ -115,6 +115,62 @@ void printPlayer(Player p) {
     cout << endl;
 }
 
+const int TRACK_SIZE = 52;
+const int HOME_COLUMN_SIZE = 5;
+
+int startpos[4] = { 39, 26, 13, 0 };
+
+int safepos[8] = { 0, 8, 13, 21, 26, 34, 39, 47 };
+
+int homePos[4][5] =
+{
+    {52, 53, 54, 55, 56},
+    {57, 58, 59, 60, 61},
+    {62, 63, 64, 65, 66},
+    {67, 68, 69, 70, 71}
+};
+
+bool isSafe(int pos)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        if (safepos[i] == pos)
+            return true;
+    }
+
+    return false;
+}
+
+int getTrackPosition(Character character, int stepsTaken)
+{
+    return (startpos[character] + stepsTaken - 1) % TRACK_SIZE;
+}
+
+int getHomeIndex(int stepsTaken)
+{
+    return stepsTaken - 52;
+}
+
+int getBoardPosition(Character character, int stepsTaken)
+{
+    if (stepsTaken == 0)
+        return -1;
+
+    else if (stepsTaken >= 1 && stepsTaken <= LAST_TRACK_STEP)
+        return getTrackPosition(character, stepsTaken);
+
+    else if (stepsTaken > LAST_TRACK_STEP && stepsTaken < FINAL_STEP)
+    {
+        int index = getHomeIndex(stepsTaken);
+        return homePos[character][index];
+    }
+
+    else if (stepsTaken == FINAL_STEP)
+        return -2;
+
+    return -3;
+}
+
 int main() {
     Player p1 = createPlayer("Minahil", DORAEMON);
     Player p2 = createPlayer("Fatima", NOBITA);
