@@ -221,6 +221,35 @@ int nextPlayer(Player players[], int numberOfPlayers, int currentPlayer)
     return currentPlayer;
 }
 
+bool canTokenMove(Token token, int dice)
+{
+    if (dice < 1 || dice > 6)
+        return false;
+
+    if (token.stepsTaken == 0)
+        return dice == 6;
+
+    if (token.stepsTaken >= FINAL_STEP)
+        return false;
+
+    if (token.stepsTaken + dice > FINAL_STEP)
+        return false;
+
+    return true;
+}
+
+bool moveToken(Token& token, int dice)
+{
+    if (!canTokenMove(token, dice))
+        return false;
+
+    if (token.stepsTaken == 0)
+        token.stepsTaken = 1;
+    else
+        token.stepsTaken += dice;
+
+    return true;
+}
 int main()
 {
     srand(time(0));
