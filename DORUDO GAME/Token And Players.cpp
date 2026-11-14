@@ -2,6 +2,8 @@
 // STEP 1 (Minahil): Token and Player
 // STEP 2 (Fatima): Board Data
 // STEP 3 (Minahil): Dice and Game Setup
+// STEP 4 (Fatima): Token Movement Rules
+// STEP 5 (Minahil): Turn Flow
 
 #include <iostream>
 #include <string>
