@@ -238,8 +238,7 @@ bool canTokenMove(Token token, int dice)
     return true;
 }
 
-bool moveToken(Token& token, int dice)
-{
+bool moveToken(Token& token, int dice){
     if (!canTokenMove(token, dice))
         return false;
 
@@ -250,43 +249,103 @@ bool moveToken(Token& token, int dice)
 
     return true;
 }
+
+bool hasLegalMove(Player player, int dice)
+{
+    for (int i = 0; i < TOKENS_PER_PLAYER; i++)
+    {
+        if (canTokenMove(player.tokens[i], dice))
+            return true;
+    }
+
+    return false;
+}
+
+int chooseToken(Player player, int dice)
+{
+    int count = 0;
+    int onlyOne = 0;
+
+    for (int i = 0; i < TOKENS_PER_PLAYER; i++)
+    {
+        if (canTokenMove(player.tokens[i], dice))
+        {
+            count++;
+            onlyOne = i;
+        }
+    }
+
+    if (count == 1)
+        return onlyOne;
+
+    int choice = 0;
+
+    while (choice < 1 || choice > 4 || !canTokenMove(player.tokens[choice - 1], dice))
+    {
+        cout << "Which token do you want to move (1 to 4)? ";
+        cin >> choice;
+
+        if (cin.fail())
+        {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            choice = 0;
+        }
+    }
+
+    return choice - 1;
+}
+
+void playTurn(Player& player)
+{
+    int sixesInRow = 0;
+    bool again = true;
+
+    while (again)
+    {
+        int dice = rollDice();
+        cout << player.name << " rolled " << dice << endl;
+
+        if (dice == 6)
+            sixesInRow++;
+
+        if (sixesInRow == 3)
+        {
+            cout << "Three 6s in a row. Turn cancelled." << endl;
+            return;
+        }
+
+        if (hasLegalMove(player, dice))
+        {
+            int t = chooseToken(player, dice);
+            moveToken(player.tokens[t], dice);
+            cout << "Token " << t + 1 << " is now on step "
+                << player.tokens[t].stepsTaken << endl;
+        }
+        else
+        {
+            cout << "No token can move." << endl;
+        }
+
+        if (dice != 6)
+            again = false;
+    }
+}
 int main()
 {
     srand(time(0));
 
-    int numberOfPlayers = 0;
-    while (numberOfPlayers < 2 || numberOfPlayers > MAX_PLAYERS)
-    {
-        cout << "How many players (2 to 4)? ";
-        cin >> numberOfPlayers;
-    }
-
-    string names[MAX_PLAYERS];
-    for (int i = 0; i < numberOfPlayers; i++)
-    {
-        cout << "Name of player " << i + 1 << ": ";
-        cin >> names[i];
-    }
-
+    string names[MAX_PLAYERS] = { "Minahil", "Fatima", "", "" };
     Player players[MAX_PLAYERS];
-    setupGame(players, names, numberOfPlayers);
+    setupGame(players, names, 2);
 
-    cout << endl << "--- Players and their characters ---" << endl;
-    for (int i = 0; i < numberOfPlayers; i++)
-    {
-        cout << players[i].name << " is "
-            << characterName(players[i].character)
-            << " (" << characterColour(players[i].character) << ")" << endl;
-    }
-
-    cout << endl << "--- Testing the turns ---" << endl;
     int current = 0;
-    for (int turn = 1; turn <= 8; turn++)
+
+    for (int turn = 1; turn <= 20; turn++)
     {
-        int dice = rollDice();
-        cout << "Turn " << turn << ": " << players[current].name
-            << " rolled " << dice << endl;
-        current = nextPlayer(players, numberOfPlayers, current);
+        cout << endl << "Turn " << turn << ": " << players[current].name << endl;
+        playTurn(players[current]);
+        current = nextPlayer(players, 2, current);
     }
 
     return 0;
