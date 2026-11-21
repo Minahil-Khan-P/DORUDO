@@ -4,6 +4,7 @@
 // STEP 3 (Minahil): Dice and Game Setup
 // STEP 4 (Fatima): Token Movement Rules
 // STEP 5 (Minahil): Turn Flow
+// Step 6 (Fatima): captures
 
 #include <iostream>
 #include <string>
@@ -11,7 +12,7 @@
 #include <ctime>
 using namespace std;
 
-const int TOKENS_PER_PLAYER = 4;
+const int TOKENS_PER_PLAYER = 4;                           //(MINAHIL STEP 1)
 
 const int LAST_TRACK_STEP = 51;
 const int FINAL_STEP = 57;
@@ -119,7 +120,7 @@ void printPlayer(Player p) {
         cout << "  Rank: " << p.rank << endl;
     }
     cout << endl;
-}
+}                                                              // END OF STEP 1
 
 const int TRACK_SIZE = 52;
 const int HOME_COLUMN_SIZE = 5;
@@ -177,7 +178,7 @@ int getBoardPosition(Character character, int stepsTaken)
     return -3;
 }
 
-const int MAX_PLAYERS = 4;
+const int MAX_PLAYERS = 4;                                             //(MINAHIL STEP 3)
 
 int rollDice()
 {
@@ -221,7 +222,7 @@ int nextPlayer(Player players[], int numberOfPlayers, int currentPlayer)
     }
 
     return currentPlayer;
-}
+}                                                                  // END OF STEP 3
 
 bool canTokenMove(Token token, int dice)
 {
@@ -252,7 +253,70 @@ bool moveToken(Token& token, int dice){
     return true;
 }
 
-bool hasLegalMove(Player player, int dice)
+int countTokensAt(Player player, int position)
+{
+    int count = 0;
+
+    for (int j = 0; j < TOKENS_PER_PLAYER; j++)
+    {
+        if (isOnTrack(player.tokens[j]))
+        {
+            int p = getTrackPosition(player.character, player.tokens[j].stepsTaken);
+
+            if (p == position)
+                count++;
+        }
+    }
+
+    return count;
+}
+
+void captureTokens(Player players[], int currentPlayer,
+    int numberOfPlayers, int tokenIndex)
+{
+    Token myToken = players[currentPlayer].tokens[tokenIndex];
+
+    if (!isOnTrack(myToken))
+        return;
+
+    int position = getTrackPosition(
+        players[currentPlayer].character,
+        myToken.stepsTaken
+    );
+
+    if (!isSafe(position))
+    {
+        for (int i = 0; i < numberOfPlayers; i++)
+        {
+            if (i != currentPlayer)
+            {
+                for (int j = 0; j < TOKENS_PER_PLAYER; j++)
+                {
+                    Token& opponentToken = players[i].tokens[j];
+
+                    if (isOnTrack(opponentToken))
+                    {
+                        int opponentPosition = getTrackPosition(
+                            players[i].character,
+                            opponentToken.stepsTaken
+                        );
+
+                        if (position == opponentPosition && countTokensAt(players[i], position) == 1)
+                        {
+                            opponentToken.stepsTaken = 0;
+
+                            cout << players[i].name
+                                << "'s Token " << j + 1
+                                << " has been captured!" << endl;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+bool hasLegalMove(Player player, int dice)                         //(MINAHIL STEP 5)
 {
     for (int i = 0; i < TOKENS_PER_PLAYER; i++)
     {
@@ -298,7 +362,7 @@ int chooseToken(Player player, int dice)
     return choice - 1;
 }
 
-void playTurn(Player& player)
+void playTurn(Player players[], int numberOfPlayers, int currentPlayer)
 {
     int sixesInRow = 0;
     bool again = true;
@@ -306,7 +370,9 @@ void playTurn(Player& player)
     while (again)
     {
         int dice = rollDice();
-        cout << player.name << " rolled " << dice << endl;
+
+        cout << players[currentPlayer].name
+            << " rolled " << dice << endl;
 
         if (dice == 6)
             sixesInRow++;
@@ -317,12 +383,18 @@ void playTurn(Player& player)
             return;
         }
 
-        if (hasLegalMove(player, dice))
+        if (hasLegalMove(players[currentPlayer], dice))
         {
-            int t = chooseToken(player, dice);
-            moveToken(player.tokens[t], dice);
-            cout << "Token " << t + 1 << " is now on step "
-                << player.tokens[t].stepsTaken << endl;
+            int t = chooseToken(players[currentPlayer], dice);
+
+            moveToken(players[currentPlayer].tokens[t], dice);
+
+            cout << "Token " << t + 1
+                << " is now on step "
+                << players[currentPlayer].tokens[t].stepsTaken
+                << endl;
+
+            captureTokens(players, currentPlayer, numberOfPlayers, t);
         }
         else
         {
@@ -332,7 +404,8 @@ void playTurn(Player& player)
         if (dice != 6)
             again = false;
     }
-}
+}                                                           // END OF STEP 5
+
 int main()
 {
     srand(time(0));
@@ -346,7 +419,7 @@ int main()
     for (int turn = 1; turn <= 20; turn++)
     {
         cout << endl << "Turn " << turn << ": " << players[current].name << endl;
-        playTurn(players[current]);
+        playTurn(players, 2, current);
         current = nextPlayer(players, 2, current);
     }
 
