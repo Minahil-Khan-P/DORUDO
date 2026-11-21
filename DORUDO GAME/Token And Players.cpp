@@ -5,6 +5,7 @@
 // STEP 4 (Fatima): Token Movement Rules
 // STEP 5 (Minahil): Turn Flow
 // Step 6 (Fatima): captures
+// Step 7 (Minahil): Ranking, Game End and Results
 
 #include <iostream>
 #include <string>
@@ -406,22 +407,111 @@ void playTurn(Player players[], int numberOfPlayers, int currentPlayer)
     }
 }                                                           // END OF STEP 5
 
+int countFinishedPlayers(Player players[], int numberOfPlayers)
+{
+    int count = 0;
+
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        if (players[i].finished)
+            count++;
+    }
+
+    return count;
+}
+
+void updateRanks(Player players[], int numberOfPlayers)
+{
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        if (!players[i].finished && countCompletedTokens(players[i]) == TOKENS_PER_PLAYER)
+        {
+            players[i].finished = true;
+            players[i].rank = countFinishedPlayers(players, numberOfPlayers);
+
+            cout << players[i].name << " finished in place "
+                << players[i].rank << "!" << endl;
+        }
+    }
+}
+
+bool isGameOver(Player players[], int numberOfPlayers)
+{
+    return countFinishedPlayers(players, numberOfPlayers) == numberOfPlayers - 1;
+}
+
+void giveLastRank(Player players[], int numberOfPlayers)
+{
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        if (!players[i].finished)
+        {
+            players[i].finished = true;
+            players[i].rank = numberOfPlayers;
+        }
+    }
+}
+
+string rewardFor(int rank, int numberOfPlayers)
+{
+    if (rank == numberOfPlayers)
+        return "Gian's song";
+    else if (rank == 1)
+        return "Gourmet Table Cloth";
+    else if (rank == 2)
+        return "Memory Bread";
+    else
+        return "Translation Konjac";
+}
+
+void printResults(Player players[], int numberOfPlayers)
+{
+    cout << endl << "=== FINAL RESULTS ===" << endl;
+
+    for (int rank = 1; rank <= numberOfPlayers; rank++)
+    {
+        for (int i = 0; i < numberOfPlayers; i++)
+        {
+            if (players[i].rank == rank)
+            {
+                cout << "Rank " << rank << ": " << players[i].name
+                    << " (" << characterName(players[i].character) << ") - "
+                    << rewardFor(rank, numberOfPlayers) << endl;
+            }
+        }
+    }
+}
+
 int main()
 {
     srand(time(0));
 
-    string names[MAX_PLAYERS] = { "Minahil", "Fatima", "", "" };
+    int numberOfPlayers = 2;
+
+    string names[MAX_PLAYERS] = { "Minahil", "Fatima", "Player 3", "Player 4" };
     Player players[MAX_PLAYERS];
-    setupGame(players, names, 2);
+    setupGame(players, names, numberOfPlayers);
+
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        players[i].tokens[0].stepsTaken = FINAL_STEP;
+        players[i].tokens[1].stepsTaken = FINAL_STEP;
+        players[i].tokens[2].stepsTaken = FINAL_STEP;
+        players[i].tokens[3].stepsTaken = 50;
+    }
 
     int current = 0;
 
-    for (int turn = 1; turn <= 20; turn++)
+    while (!isGameOver(players, numberOfPlayers))
     {
-        cout << endl << "Turn " << turn << ": " << players[current].name << endl;
-        playTurn(players, 2, current);
-        current = nextPlayer(players, 2, current);
+        cout << endl << players[current].name << "'s turn" << endl;
+        playTurn(players, numberOfPlayers, current);
+        updateRanks(players, numberOfPlayers);
+        current = nextPlayer(players, numberOfPlayers, current);
     }
+
+    giveLastRank(players, numberOfPlayers);
+    printResults(players, numberOfPlayers);
 
     return 0;
 }
