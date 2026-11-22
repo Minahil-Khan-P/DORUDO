@@ -6,6 +6,7 @@
 // STEP 5 (Minahil): Turn Flow
 // Step 6 (Fatima): captures
 // Step 7 (Minahil): Ranking, Game End and Results
+// Step 8 (Both): testing and fixes
 
 #include <iostream>
 #include <string>
@@ -396,6 +397,8 @@ void playTurn(Player players[], int numberOfPlayers, int currentPlayer)
                 << endl;
 
             captureTokens(players, currentPlayer, numberOfPlayers, t);
+            if (countCompletedTokens(players[currentPlayer]) == TOKENS_PER_PLAYER)
+                return;
         }
         else
         {
@@ -491,14 +494,6 @@ int main()
     string names[MAX_PLAYERS] = { "Minahil", "Fatima", "Player 3", "Player 4" };
     Player players[MAX_PLAYERS];
     setupGame(players, names, numberOfPlayers);
-
-    for (int i = 0; i < numberOfPlayers; i++)
-    {
-        players[i].tokens[0].stepsTaken = FINAL_STEP;
-        players[i].tokens[1].stepsTaken = FINAL_STEP;
-        players[i].tokens[2].stepsTaken = FINAL_STEP;
-        players[i].tokens[3].stepsTaken = 50;
-    }
 
     int current = 0;
 
