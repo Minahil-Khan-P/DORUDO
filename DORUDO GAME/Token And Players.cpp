@@ -7,11 +7,14 @@
 // Step 6 (Fatima): captures
 // Step 7 (Minahil): Ranking, Game End and Results
 // Step 8 (Both): testing and fixes
+// Step 9 (Fatima): Board and Token drawings
+// Step 10 (Minahil): Roll Button, Dice Animation and Turn Indicator
 
 #include <iostream>
 #include <string>
 #include <cstdlib>
 #include <ctime>
+#include<SFML/Graphics.hpp>
 using namespace std;
 
 const int TOKENS_PER_PLAYER = 4;                           //(MINAHIL STEP 1)
@@ -485,7 +488,450 @@ void printResults(Player players[], int numberOfPlayers)
     }
 }
 
-int main()
+drawing code :
+
+
+
+// STEP 9 (Fatima) 
+const int WINDOW_SIZE = 720;
+const float CELL = 42.f;
+const float ORIGIN = 45.f;
+const float TOKEN_RADIUS = 14.f;
+
+sf::Color BLUE(35, 145, 235);
+sf::Color YELLOW(255, 205, 45);
+sf::Color PINK(245, 125, 185);
+sf::Color GREEN(65, 180, 100);
+
+sf::Color LIGHT_BLUE(190, 225, 250);
+sf::Color LIGHT_YELLOW(255, 240, 170);
+sf::Color LIGHT_PINK(255, 215, 235);
+sf::Color LIGHT_GREEN(195, 235, 205);
+
+sf::Color getCharacterColor(Character character)
+{
+    switch (character)
+    {
+    case DORAEMON: return BLUE;
+    case NOBITA: return YELLOW;
+    case SHIZUKA: return PINK;
+    case GIAN: return GREEN;
+    }
+
+    return sf::Color::White;
+}
+
+sf::Color getLightColor(Character character)
+{
+    switch (character)
+    {
+    case DORAEMON: return LIGHT_BLUE;
+    case NOBITA: return LIGHT_YELLOW;
+    case SHIZUKA: return LIGHT_PINK;
+    case GIAN: return LIGHT_GREEN;
+    }
+
+    return sf::Color::White;
+}
+
+sf::Vector2f cellPosition(int row, int col)
+{
+    return {
+        ORIGIN + col * CELL,
+        ORIGIN + row * CELL
+    };
+}
+
+sf::Vector2f cellCenter(int row, int col)
+{
+    return {
+        ORIGIN + col * CELL + CELL / 2,
+        ORIGIN + row * CELL + CELL / 2
+    };
+}
+
+void drawCell(sf::RenderWindow& window, int row, int col,
+    sf::Color color)
+{
+    sf::RectangleShape square({ CELL - 2, CELL - 2 });
+    square.setPosition(cellPosition(row, col));
+    square.setFillColor(color);
+    square.setOutlineColor(sf::Color(90, 90, 90));
+    square.setOutlineThickness(1);
+    window.draw(square);
+}
+
+sf::Vector2i trackCells[52] =
+{
+    { 6,1 },{ 6,2 },{ 6,3 },{ 6,4 },{ 6,5 },
+    { 5,6 },{ 4,6 },{ 3,6 },{ 2,6 },{ 1,6 },
+    { 0,6 },{ 0,7 },{ 0,8 },
+
+    { 1,8 },{ 2,8 },{ 3,8 },{ 4,8 },{ 5,8 },
+    { 6,9 },{ 6,10 },{ 6,11 },{ 6,12 },{ 6,13 },
+    { 6,14 },{ 7,14 },{ 8,14 },
+
+    { 8,13 },{ 8,12 },{ 8,11 },{ 8,10 },{ 8,9 },
+    { 9,8 },{ 10,8 },{ 11,8 },{ 12,8 },{ 13,8 },
+    { 14,8 },{ 14,7 },{ 14,6 },
+
+    { 13,6 },{ 12,6 },{ 11,6 },{ 10,6 },{ 9,6 },
+    { 8,5 },{ 8,4 },{ 8,3 },{ 8,2 },{ 8,1 },
+    { 8,0 },{ 7,0 },{ 6,0 }
+};
+
+sf::Vector2i homeCells[4][5] =
+{
+    { { 13,7 },{ 12,7 },{ 11,7 },{ 10,7 },{ 9,7 } },
+    { { 7,13 },{ 7,12 },{ 7,11 },{ 7,10 },{ 7,9 } },
+    { { 1,7 },{ 2,7 },{ 3,7 },{ 4,7 },{ 5,7 } },
+    { { 7,1 },{ 7,2 },{ 7,3 },{ 7,4 },{ 7,5 } }
+};
+
+sf::Vector2i yardCenters[4][4] =
+{
+    { { 10,2 },{ 10,4 },{ 12,2 },{ 12,4 } },
+    { { 10,10 },{ 10,12 },{ 12,10 },{ 12,12 } },
+    { { 2,10 },{ 2,12 },{ 4,10 },{ 4,12 } },
+    { { 2,2 },{ 2,4 },{ 4,2 },{ 4,4 } }
+};
+
+void drawYards(sf::RenderWindow& window)
+{
+    int yardRows[4] = { 9, 9, 0, 0 };
+    int yardCols[4] = { 0, 9, 9, 0 };
+
+    for (int i = 0; i < 4; i++)
+    {
+        Character character = static_cast<Character>(i);
+
+        sf::RectangleShape yard({ CELL * 6, CELL * 6 });
+        yard.setPosition(cellPosition(yardRows[i], yardCols[i]));
+        yard.setFillColor(getLightColor(character));
+        yard.setOutlineColor(getCharacterColor(character));
+        yard.setOutlineThickness(4);
+
+        window.draw(yard);
+
+        for (int j = 0; j < 4; j++)
+        {
+            sf::Vector2i position = yardCenters[i][j];
+            sf::Vector2f center = cellCenter(position.x, position.y);
+
+            sf::CircleShape token(TOKEN_RADIUS + 3);
+            token.setOrigin({ TOKEN_RADIUS + 3, TOKEN_RADIUS + 3 });
+            token.setPosition(center);
+            token.setFillColor(sf::Color::White);
+            token.setOutlineColor(getCharacterColor(character));
+            token.setOutlineThickness(3);
+
+            window.draw(token);
+        }
+    }
+}
+
+void drawTrack(sf::RenderWindow& window)
+{
+    for (int i = 0; i < 52; i++)
+    {
+        int row = trackCells[i].x;
+        int col = trackCells[i].y;
+
+        sf::Color color(245, 245, 245);
+
+        if (i == 0 || i == 13 || i == 26 || i == 39)
+        {
+            int characterIndex = 0;                // i == 39 is Doraemon
+            if (i == 0) characterIndex = 3;        // Gian
+            else if (i == 13) characterIndex = 2;  // Shizuka
+            else if (i == 26) characterIndex = 1;  // Nobita
+            color = getLightColor(static_cast<Character>(characterIndex));
+        }
+
+        drawCell(window, row, col, color);
+
+        if (i == 0 || i == 8 || i == 13 || i == 21 ||
+            i == 26 || i == 34 || i == 39 || i == 47)
+        {
+            sf::CircleShape safeMark(5);
+            safeMark.setOrigin({ 5, 5 });
+            safeMark.setPosition(cellCenter(row, col));
+            safeMark.setFillColor(sf::Color(230, 175, 35));
+            window.draw(safeMark);
+        }
+    }
+}
+
+void drawHomeColumns(sf::RenderWindow& window)
+{
+    for (int character = 0; character < 4; character++)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            int row = homeCells[character][i].x;
+            int col = homeCells[character][i].y;
+
+            drawCell(
+                window,
+                row,
+                col,
+                getLightColor(static_cast<Character>(character))
+            );
+        }
+    }
+}
+
+void drawCenter(sf::RenderWindow& window)
+{
+    sf::RectangleShape center({ CELL * 3, CELL * 3 });
+    center.setPosition(cellPosition(6, 6));
+    center.setFillColor(sf::Color(235, 235, 235));
+    center.setOutlineColor(sf::Color::Black);
+    center.setOutlineThickness(2);
+
+    window.draw(center);
+
+    sf::CircleShape centerMark(25);
+    centerMark.setOrigin({ 25, 25 });
+    centerMark.setPosition(cellCenter(7, 7));
+    centerMark.setFillColor(BLUE);
+    centerMark.setOutlineColor(sf::Color::White);
+    centerMark.setOutlineThickness(3);
+
+    window.draw(centerMark);
+}
+
+void drawBoard(sf::RenderWindow& window)
+{
+    sf::RectangleShape background({ 630, 630 });
+    background.setPosition({ ORIGIN, ORIGIN });
+    background.setFillColor(sf::Color::White);
+    background.setOutlineColor(sf::Color::Black);
+    background.setOutlineThickness(3);
+
+    window.draw(background);
+
+    drawYards(window);
+    drawTrack(window);
+    drawHomeColumns(window);
+    drawCenter(window);
+}
+
+void drawToken(sf::RenderWindow& window,
+    sf::Vector2f center,
+    Character character,
+    int tokenIndex)
+{
+    sf::CircleShape token(TOKEN_RADIUS);
+    token.setOrigin({ TOKEN_RADIUS, TOKEN_RADIUS });
+
+    float offsetsX[4] = { -5, 5, -5, 5 };
+    float offsetsY[4] = { -5, -5, 5, 5 };
+
+    center.x += offsetsX[tokenIndex];
+    center.y += offsetsY[tokenIndex];
+
+    token.setPosition(center);
+    token.setFillColor(getCharacterColor(character));
+    token.setOutlineColor(sf::Color::White);
+    token.setOutlineThickness(2);
+
+    window.draw(token);
+}
+
+void drawTokens(sf::RenderWindow& window,
+    Player players[],
+    int numberOfPlayers)
+{
+    for (int p = 0; p < numberOfPlayers; p++)
+    {
+        Character character = players[p].character;
+
+        for (int t = 0; t < TOKENS_PER_PLAYER; t++)
+        {
+            int position = getBoardPosition(
+                character,
+                players[p].tokens[t].stepsTaken
+            );
+
+            if (position == -1)
+            {
+                sf::Vector2i yard = yardCenters[character][t];
+
+                drawToken(
+                    window,
+                    cellCenter(yard.x, yard.y),
+                    character,
+                    t
+                );
+            }
+            else if (position >= 0 && position < 52)
+            {
+                sf::Vector2i track = trackCells[position];
+
+                drawToken(
+                    window,
+                    cellCenter(track.x, track.y),
+                    character,
+                    t
+                );
+            }
+            else if (players[p].tokens[t].stepsTaken >= 52 &&
+                players[p].tokens[t].stepsTaken <= 56)
+            {
+                int homeIndex = players[p].tokens[t].stepsTaken - 52;
+                sf::Vector2i home = homeCells[character][homeIndex];
+
+                drawToken(
+                    window,
+                    cellCenter(home.x, home.y),
+                    character,
+                    t
+                );
+            }
+        }
+    }
+}
+
+// STEP 10 (Minahil)
+const float BUTTON_X = 780.f;
+const float BUTTON_Y = 560.f;
+const float BUTTON_W = 160.f;
+const float BUTTON_H = 60.f;
+
+
+struct DiceState
+{
+    bool rolling;   
+    int frames;     
+    int shown;      
+    int result;     
+};
+
+DiceState createDice()
+{
+    DiceState d;
+    d.rolling = false;
+    d.frames = 0;
+    d.shown = 1;
+    d.result = 0;
+    return d;
+}
+
+
+void startRoll(DiceState& d)
+{
+    d.rolling = true;
+    d.frames = 0;
+    d.result = rollDice();   
+}
+
+
+bool updateDice(DiceState& d)
+{
+    if (!d.rolling)
+        return false;
+
+    d.frames++;
+
+    
+    if (d.frames % 6 == 0)
+        d.shown = rollDice();
+
+    
+    if (d.frames >= 60)
+    {
+        d.rolling = false;
+        d.shown = d.result;
+        return true;
+    }
+
+    return false;
+}
+
+
+bool clickedRollButton(float mouseX, float mouseY)
+{
+    return mouseX >= BUTTON_X && mouseX <= BUTTON_X + BUTTON_W &&
+        mouseY >= BUTTON_Y && mouseY <= BUTTON_Y + BUTTON_H;
+}
+
+
+void drawText(sf::RenderWindow& window, sf::Font& font, string words,
+    unsigned int size, float x, float y, sf::Color colour)
+{
+    sf::Text text(font, words, size);
+    text.setFillColor(colour);
+
+    sf::FloatRect box = text.getLocalBounds();
+    text.setOrigin({ box.position.x + box.size.x / 2,
+                    box.position.y + box.size.y / 2 });
+    text.setPosition({ x, y });
+
+    window.draw(text);
+}
+
+
+void drawPanel(sf::RenderWindow& window)
+{
+    sf::RectangleShape panel({ 280.f, 720.f });
+    panel.setPosition({ 720.f, 0.f });
+    panel.setFillColor(sf::Color(235, 230, 215));
+    window.draw(panel);
+}
+
+void drawRollButton(sf::RenderWindow& window, sf::Font& font, bool rolling)
+{
+    sf::RectangleShape button({ BUTTON_W, BUTTON_H });
+    button.setPosition({ BUTTON_X, BUTTON_Y });
+
+    if (rolling)
+        button.setFillColor(sf::Color(160, 160, 160));   
+    else
+        button.setFillColor(sf::Color(35, 145, 235));    
+
+    button.setOutlineColor(sf::Color::White);
+    button.setOutlineThickness(3);
+    window.draw(button);
+
+    drawText(window, font, "ROLL", 28,
+        BUTTON_X + BUTTON_W / 2, BUTTON_Y + BUTTON_H / 2,
+        sf::Color::White);
+}
+
+void drawDice(sf::RenderWindow& window, sf::Font& font, DiceState d)
+{
+    sf::RectangleShape box({ 120.f, 120.f });
+    box.setOrigin({ 60.f, 60.f });
+    box.setPosition({ 860.f, 430.f });
+    box.setFillColor(sf::Color::White);
+    box.setOutlineColor(sf::Color::Black);
+    box.setOutlineThickness(4);
+    window.draw(box);
+
+    drawText(window, font, to_string(d.shown), 70, 860.f, 425.f,
+        sf::Color::Black);
+}
+
+
+void drawTurnIndicator(sf::RenderWindow& window, sf::Font& font, Player player)
+{
+    drawText(window, font, "Turn", 28, 860.f, 50.f, sf::Color::Black);
+
+    sf::CircleShape face(60.f);
+    face.setOrigin({ 60.f, 60.f });
+    face.setPosition({ 860.f, 160.f });
+    face.setFillColor(getCharacterColor(player.character));
+    face.setOutlineColor(sf::Color::White);
+    face.setOutlineThickness(4);
+    window.draw(face);
+
+    drawText(window, font, characterName(player.character), 26,
+        860.f, 250.f, sf::Color::Black);
+    drawText(window, font, player.name, 22,
+        860.f, 285.f, sf::Color(90, 90, 90));
+}
+int consoleMain()
 {
     srand(time(0));
 
@@ -507,6 +953,69 @@ int main()
 
     giveLastRank(players, numberOfPlayers);
     printResults(players, numberOfPlayers);
+
+    return 0;
+}
+
+int main()
+{
+    srand(time(0));
+
+    int numberOfPlayers = 4;
+
+    string names[MAX_PLAYERS] = { "Minahil", "Fatima", "Player 3", "Player 4" };
+    Player players[MAX_PLAYERS];
+    setupGame(players, names, numberOfPlayers);
+
+    players[0].tokens[0].stepsTaken = 1;
+    players[0].tokens[1].stepsTaken = 20;
+    players[1].tokens[0].stepsTaken = 54;
+    players[2].tokens[0].stepsTaken = 30;
+
+    sf::RenderWindow window(sf::VideoMode({ 1000, 720 }), "DORUDO");
+    window.setFramerateLimit(60);
+
+    sf::Font font;
+    if (!font.openFromFile("C:/Windows/Fonts/arial.ttf"))
+        return 1;
+
+    DiceState dice = createDice();
+    int current = 0;
+
+    while (window.isOpen())
+    {
+        while (const std::optional event = window.pollEvent())
+        {
+            if (event->is<sf::Event::Closed>())
+                window.close();
+
+            if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>())
+            {
+                if (click->button == sf::Mouse::Button::Left &&
+                    !dice.rolling &&
+                    clickedRollButton((float)click->position.x,
+                        (float)click->position.y))
+                {
+                    startRoll(dice);
+                }
+            }
+        }
+
+        if (updateDice(dice))
+        {
+            if (dice.result != 6)
+                current = nextPlayer(players, numberOfPlayers, current);
+        }
+
+        window.clear(sf::Color(250, 248, 240));
+        drawBoard(window);
+        drawTokens(window, players, numberOfPlayers);
+        drawPanel(window);
+        drawTurnIndicator(window, font, players[current]);
+        drawDice(window, font, dice);
+        drawRollButton(window, font, dice.rolling);
+        window.display();
+    }
 
     return 0;
 }
