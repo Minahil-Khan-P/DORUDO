@@ -11,13 +11,26 @@
 // Step 10 (Minahil): Roll Button, Dice Animation and Turn Indicator
 // Step 11 (Fatima): Allowing players click a token to move it and linking to step  4 to 6 
 // Step 12(Minahil) : Make the screens intro, main menu, instructions and setup screen
+// Step 13 (Fatima) : Add background music, winner and loser sounds and token sounds
 #include <iostream>
 #include <string>
 #include <cstdlib>
 #include <ctime>
 #include<SFML/Graphics.hpp>
+#include<SFML/Audio.hpp>
 using namespace std;
+sf::Music backgroundMusic;
+// Sound buffers
+sf::SoundBuffer diceBuffer;
+sf::SoundBuffer gadgetBuffer;
+sf::SoundBuffer gianBuffer;
+sf::SoundBuffer tokenReplaceBuffer;
 
+// Sound objects
+sf::Sound diceSound(diceBuffer);
+sf::Sound gadgetSound(gadgetBuffer);
+sf::Sound gianSound(gianBuffer);
+sf::Sound tokenReplaceSound(tokenReplaceBuffer);
 const int TOKENS_PER_PLAYER = 4;                           //(MINAHIL STEP 1)
 
 const int LAST_TRACK_STEP = 51;
@@ -292,6 +305,8 @@ void captureTokens(Player players[], int currentPlayer,
 
     if (!isSafe(position))
     {
+        bool captured = false;
+
         for (int i = 0; i < numberOfPlayers; i++)
         {
             if (i != currentPlayer)
@@ -307,9 +322,11 @@ void captureTokens(Player players[], int currentPlayer,
                             opponentToken.stepsTaken
                         );
 
-                        if (position == opponentPosition && countTokensAt(players[i], position) == 1)
+                        if (position == opponentPosition &&
+                            countTokensAt(players[i], position) == 1)
                         {
                             opponentToken.stepsTaken = 0;
+                            captured = true;
 
                             cout << players[i].name
                                 << "'s Token " << j + 1
@@ -319,9 +336,11 @@ void captureTokens(Player players[], int currentPlayer,
                 }
             }
         }
+
+        if (captured)
+            tokenReplaceSound.play();
     }
 }
-
 bool hasLegalMove(Player player, int dice)                         //(MINAHIL STEP 5)
 {
     for (int i = 0; i < TOKENS_PER_PLAYER; i++)
@@ -1074,6 +1093,15 @@ bool finishPlayerTurn(Player players[],
         giveLastRank(players, numberOfPlayers);
         printResults(players, numberOfPlayers);
 
+        for (int i = 0; i < numberOfPlayers; i++)
+        {
+            if (players[i].rank == 1)
+                gadgetSound.play();
+
+            if (players[i].rank == numberOfPlayers)
+                gianSound.play();
+        }
+
         return true;
     }
 
@@ -1310,7 +1338,6 @@ int consoleMain()
 
     return 0;
 }
-
 int main()
 {
     srand(time(0));
@@ -1322,18 +1349,43 @@ int main()
     if (!font.openFromFile("C:/Windows/Fonts/arial.ttf"))
         return 1;
 
-    // which screen we are on, and how many frames we have been on it
+    // Load background music
+    if (!backgroundMusic.openFromFile("Audio/background.ogg"))
+    {
+        cout << "Background music could not be loaded!" << endl;
+    }
+    else
+    {
+        backgroundMusic.setLooping(true);
+        backgroundMusic.setVolume(30);
+        backgroundMusic.play();
+    }
+
+    // Load sound effects
+    if (!diceBuffer.loadFromFile("Audio/diceroll.wav"))
+        cout << "Dice sound not loaded!" << endl;
+
+    if (!gadgetBuffer.loadFromFile("Audio/gadget.wav"))
+        cout << "Gadget sound not loaded!" << endl;
+
+    if (!gianBuffer.loadFromFile("Audio/gian.wav"))
+        cout << "Gian sound not loaded!" << endl;
+
+    if (!tokenReplaceBuffer.loadFromFile("Audio/tokenreplace.wav"))
+        cout << "Token replacement sound not loaded!" << endl;
+
+    // Screen information
     Screen screen = INTRO;
     int frames = 0;
-    bool afterStart = false;      // true = instructions opened from Start Game
+    bool afterStart = false;
 
-    // setup screen information
+    // Setup information
     int numberOfPlayers = 2;
     string names[MAX_PLAYERS] = { "", "", "", "" };
     int activeBox = 0;
     Player players[MAX_PLAYERS];
 
-    // game information
+    // Game information
     DiceState dice = createDice();
     int currentPlayer = 0;
     bool gameFinished = false;
@@ -1345,37 +1397,39 @@ int main()
 
     while (window.isOpen())
     {
-        // ---------- 1. events (mouse, keyboard, close) ----------
+        // 1. EVENTS
         while (const std::optional event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
                 window.close();
 
-            // typing the names (only on the setup screen)
+            // Typing player names
             if (screen == SETUP)
             {
                 if (const auto* typed = event->getIf<sf::Event::TextEntered>())
                 {
                     char32_t c = typed->unicode;
 
-                    if (c == 8)                         // Backspace
+                    if (c == 8)
                     {
                         if (!names[activeBox].empty())
                             names[activeBox].pop_back();
                     }
-                    else if (c == 13)                   // Enter
+                    else if (c == 13)
                     {
                         activeBox = (activeBox + 1) % numberOfPlayers;
                     }
-                    else if (c >= 32 && c < 127 && names[activeBox].size() < 12)
+                    else if (c >= 32 && c < 127 &&
+                        names[activeBox].size() < 12)
                     {
                         names[activeBox] += (char)c;
                     }
                 }
             }
 
-            // mouse clicks
-            if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>())
+            // Mouse clicks
+            if (const auto* click =
+                event->getIf<sf::Event::MouseButtonPressed>())
             {
                 if (click->button != sf::Mouse::Button::Left)
                     continue;
@@ -1385,24 +1439,24 @@ int main()
 
                 if (screen == INTRO)
                 {
-                    screen = MENU;                      // click = skip intro
+                    screen = MENU;
                     frames = 0;
                 }
                 else if (screen == MENU)
                 {
-                    if (isInside(mx, my, 350, 300, 300, 70))        // START GAME
+                    if (isInside(mx, my, 350, 300, 300, 70))
                     {
                         afterStart = true;
                         screen = INSTRUCTIONS;
                         frames = 0;
                     }
-                    else if (isInside(mx, my, 350, 400, 300, 70))   // INSTRUCTIONS
+                    else if (isInside(mx, my, 350, 400, 300, 70))
                     {
                         afterStart = false;
                         screen = INSTRUCTIONS;
                         frames = 0;
                     }
-                    else if (isInside(mx, my, 350, 500, 300, 70))   // EXIT GAME
+                    else if (isInside(mx, my, 350, 500, 300, 70))
                     {
                         window.close();
                     }
@@ -1415,29 +1469,34 @@ int main()
                             screen = SETUP;
                         else
                             screen = MENU;
+
                         frames = 0;
                     }
                 }
                 else if (screen == SETUP)
                 {
-                    // number of players buttons
+                    // Number of players buttons
                     for (int k = 0; k < 3; k++)
                     {
-                        if (isInside(mx, my, 300.f + k * 130.f, 110, 110, 60))
+                        if (isInside(mx, my,
+                            300.f + k * 130.f, 110, 110, 60))
                         {
                             numberOfPlayers = k + 2;
                             activeBox = 0;
                         }
                     }
 
-                    // name boxes
+                    // Name boxes
                     for (int i = 0; i < numberOfPlayers; i++)
                     {
-                        if (isInside(mx, my, 300, 235.f + i * 75.f, 400, 55))
+                        if (isInside(mx, my,
+                            300, 235.f + i * 75.f, 400, 55))
+                        {
                             activeBox = i;
+                        }
                     }
 
-                    // START button
+                    // Start button
                     if (isInside(mx, my, 350, 600, 300, 70))
                     {
                         for (int i = 0; i < numberOfPlayers; i++)
@@ -1446,7 +1505,8 @@ int main()
                                 names[i] = "Player " + to_string(i + 1);
                         }
 
-                        setupGame(players, names, numberOfPlayers);  // random characters
+                        setupGame(players, names, numberOfPlayers);
+
                         screen = REVEAL;
                         frames = 0;
                     }
@@ -1456,10 +1516,10 @@ int main()
                     if (frames >= numberOfPlayers * 45 &&
                         isInside(mx, my, 350, 620, 300, 70))
                     {
-                        // start a fresh game
                         dice = createDice();
                         currentPlayer = 0;
                         gameFinished = false;
+
                         movement.active = false;
                         sixesInRow = 0;
                         rollProcessed = false;
@@ -1468,26 +1528,34 @@ int main()
                         frames = 0;
                     }
                 }
-                else if (screen == PLAYING && !gameFinished && !movement.active)
+                else if (screen == PLAYING &&
+                    !gameFinished && !movement.active)
                 {
-                    // click on the ROLL button
+                    // ROLL button
                     if (clickedRollButton(mx, my))
                     {
                         if (!dice.rolling && dice.result == 0)
                         {
+                            diceSound.play();
+
                             startRoll(dice);
                             rollProcessed = false;
                         }
                     }
-                    // click on a token (only after the dice has stopped)
+
+                    // Token click
                     else if (dice.result > 0 && rollProcessed)
                     {
-                        int tokenIndex = getClickedToken(window, players, currentPlayer);
+                        int tokenIndex =
+                            getClickedToken(window, players, currentPlayer);
 
                         if (tokenIndex != -1)
                         {
-                            if (!startTokenMovement(players, currentPlayer,
-                                tokenIndex, dice.result))
+                            if (!startTokenMovement(
+                                players,
+                                currentPlayer,
+                                tokenIndex,
+                                dice.result))
                             {
                                 cout << "This token cannot move!" << endl;
                             }
@@ -1502,20 +1570,21 @@ int main()
 
         frames++;
 
-        // ---------- 2. the intro moves to the menu by itself ----------
+        // 2. INTRO SCREEN
         if (screen == INTRO && frames > 240)
         {
             screen = MENU;
             frames = 0;
         }
 
-        // ---------- 3. game logic (only while playing) ----------
+        // 3. GAME LOGIC
         if (screen == PLAYING)
         {
             updateDice(dice);
 
-            // the dice has just stopped
-            if (!gameFinished && !dice.rolling && dice.result > 0 && !rollProcessed)
+            // Dice has stopped
+            if (!gameFinished && !dice.rolling &&
+                dice.result > 0 && !rollProcessed)
             {
                 rollProcessed = true;
 
@@ -1529,9 +1598,12 @@ int main()
                     dice.result = 0;
                     sixesInRow = 0;
 
-                    currentPlayer = nextPlayer(players, numberOfPlayers, currentPlayer);
+                    currentPlayer = nextPlayer(
+                        players, numberOfPlayers, currentPlayer
+                    );
                 }
-                else if (!hasLegalMove(players[currentPlayer], dice.result))
+                else if (!hasLegalMove(
+                    players[currentPlayer], dice.result))
                 {
                     cout << "No legal moves!" << endl;
 
@@ -1542,28 +1614,35 @@ int main()
                     {
                         sixesInRow = 0;
 
-                        currentPlayer = nextPlayer(players, numberOfPlayers, currentPlayer);
+                        currentPlayer = nextPlayer(
+                            players, numberOfPlayers, currentPlayer
+                        );
                     }
                 }
             }
 
-            // token moving step by step
+            // Token movement
             if (!gameFinished && movement.active)
             {
-                bool moveFinished = updateTokenMovement(players, numberOfPlayers);
+                bool moveFinished =
+                    updateTokenMovement(players, numberOfPlayers);
 
                 if (moveFinished)
                 {
                     int result = dice.result;
                     dice.result = 0;
 
-                    gameFinished = finishPlayerTurn(players, numberOfPlayers,
-                        currentPlayer, result);
+                    gameFinished = finishPlayerTurn(
+                        players,
+                        numberOfPlayers,
+                        currentPlayer,
+                        result
+                    );
                 }
             }
         }
 
-        // ---------- 4. draw the current screen ----------
+        // 4. DRAW SCREENS
         if (screen == INTRO)
         {
             drawIntro(window, font, frames);
@@ -1578,7 +1657,9 @@ int main()
         }
         else if (screen == SETUP)
         {
-            drawSetup(window, font, numberOfPlayers, names, activeBox);
+            drawSetup(
+                window, font, numberOfPlayers, names, activeBox
+            );
         }
         else if (screen == REVEAL)
         {
@@ -1594,7 +1675,10 @@ int main()
 
             if (!gameFinished)
             {
-                drawTurnIndicator(window, font, players[currentPlayer]);
+                drawTurnIndicator(
+                    window, font, players[currentPlayer]
+                );
+
                 drawDice(window, font, dice);
                 drawRollButton(window, font, dice.rolling);
             }
@@ -1602,6 +1686,8 @@ int main()
 
         window.display();
     }
+
+    backgroundMusic.stop();
 
     return 0;
 }
