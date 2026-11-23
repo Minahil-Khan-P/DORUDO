@@ -1089,7 +1089,202 @@ bool finishPlayerTurn(Player players[],
     return false;
 }
 
+// STEP 12 (Minahil)
+enum Screen { INTRO, MENU, INSTRUCTIONS, SETUP, REVEAL, PLAYING };
 
+
+bool isInside(float mx, float my, float x, float y, float w, float h)
+{
+    return mx >= x && mx <= x + w && my >= y && my <= y + h;
+}
+
+
+void drawButton(sf::RenderWindow& window, sf::Font& font, string label,
+    float x, float y, float w, float h, sf::Color colour)
+{
+    sf::RectangleShape box({ w, h });
+    box.setPosition({ x, y });
+    box.setFillColor(colour);
+    box.setOutlineColor(sf::Color::White);
+    box.setOutlineThickness(3);
+    window.draw(box);
+
+    drawText(window, font, label, 28, x + w / 2, y + h / 2, sf::Color::White);
+}
+
+
+void drawIntro(sf::RenderWindow& window, sf::Font& font, int frames)
+{
+    window.clear(sf::Color::Black);
+
+    int alpha1 = frames * 3;            
+    if (alpha1 > 255)
+        alpha1 = 255;
+
+    int alpha2 = (frames - 60) * 3;     
+    if (alpha2 < 0)
+        alpha2 = 0;
+    if (alpha2 > 255)
+        alpha2 = 255;
+
+    drawText(window, font, "DORUDO", 110, 500.f, 310.f,
+        sf::Color(35, 145, 235, (unsigned char)alpha1));
+    drawText(window, font, "Doraemon based", 36, 500.f, 410.f,
+        sf::Color(255, 255, 255, (unsigned char)alpha2));
+}
+
+
+void drawMenu(sf::RenderWindow& window, sf::Font& font)
+{
+    window.clear(sf::Color(250, 248, 240));
+
+    drawText(window, font, "DORUDO", 90, 500.f, 140.f, sf::Color(35, 145, 235));
+
+    drawButton(window, font, "START GAME", 350.f, 300.f, 300.f, 70.f,
+        sf::Color(35, 145, 235));
+    drawButton(window, font, "INSTRUCTIONS", 350.f, 400.f, 300.f, 70.f,
+        sf::Color(245, 125, 185));
+    drawButton(window, font, "EXIT GAME", 350.f, 500.f, 300.f, 70.f,
+        sf::Color(65, 180, 100));
+}
+
+
+void drawInstructions(sf::RenderWindow& window, sf::Font& font, bool afterStart)
+{
+    window.clear(sf::Color(250, 248, 240));
+
+    sf::RectangleShape popup({ 800.f, 520.f });
+    popup.setPosition({ 100.f, 50.f });
+    popup.setFillColor(sf::Color::White);
+    popup.setOutlineColor(sf::Color(35, 145, 235));
+    popup.setOutlineThickness(5);
+    window.draw(popup);
+
+    drawText(window, font, "How to play", 40, 500.f, 95.f, sf::Color(35, 145, 235));
+
+    string lines[8] =
+    {
+        "1. Click ROLL to roll the dice.",
+        "2. You need a 6 to bring a token out of the yard.",
+        "3. A 6 gives another turn. Three 6s in a row cancel it.",
+        "4. After rolling, click the token you want to move.",
+        "5. Landing on one opponent token captures it.",
+        "    (Safe squares and blocks cannot be captured.)",
+        "6. You need the exact number to reach home.",
+        "7. The last player left has to listen to Gian's song!"
+    };
+
+    for (int i = 0; i < 8; i++)
+    {
+        drawText(window, font, lines[i], 24, 500.f, 160.f + i * 48.f,
+            sf::Color::Black);
+    }
+
+    if (afterStart)
+        drawButton(window, font, "CONTINUE", 350.f, 600.f, 300.f, 70.f,
+            sf::Color(35, 145, 235));
+    else
+        drawButton(window, font, "BACK", 350.f, 600.f, 300.f, 70.f,
+            sf::Color(35, 145, 235));
+}
+
+void drawSetup(sf::RenderWindow& window, sf::Font& font,
+    int numberOfPlayers, string names[], int activeBox)
+{
+    window.clear(sf::Color(250, 248, 240));
+
+    drawText(window, font, "How many players?", 40, 500.f, 60.f,
+        sf::Color(35, 145, 235));
+
+    
+    for (int k = 0; k < 3; k++)
+    {
+        sf::Color colour(160, 160, 160);        
+        if (numberOfPlayers == k + 2)
+            colour = sf::Color(35, 145, 235);   
+
+        drawButton(window, font, to_string(k + 2), 300.f + k * 130.f, 110.f,
+            110.f, 60.f, colour);
+    }
+
+    drawText(window, font, "Click a box and type the name (Enter = next box)",
+        22, 500.f, 205.f, sf::Color(90, 90, 90));
+
+    
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        sf::RectangleShape box({ 400.f, 55.f });
+        box.setPosition({ 300.f, 235.f + i * 75.f });
+        box.setFillColor(sf::Color::White);
+
+        if (i == activeBox)
+        {
+            box.setOutlineColor(sf::Color(35, 145, 235));
+            box.setOutlineThickness(4);
+        }
+        else
+        {
+            box.setOutlineColor(sf::Color(150, 150, 150));
+            box.setOutlineThickness(2);
+        }
+
+        window.draw(box);
+
+        string shown = names[i];
+        sf::Color textColour = sf::Color::Black;
+
+        if (shown == "" && i != activeBox)
+        {
+            shown = "Player " + to_string(i + 1);   
+            textColour = sf::Color(170, 170, 170);
+        }
+
+        if (i == activeBox)
+            shown = shown + "|";                    
+
+        drawText(window, font, shown, 28, 500.f, 235.f + i * 75.f + 27.f,
+            textColour);
+    }
+
+    drawButton(window, font, "START", 350.f, 600.f, 300.f, 70.f,
+        sf::Color(65, 180, 100));
+}
+
+
+void drawReveal(sf::RenderWindow& window, sf::Font& font,
+    Player players[], int numberOfPlayers, int frames)
+{
+    window.clear(sf::Color(250, 248, 240));
+
+    drawText(window, font, "Your characters", 48, 500.f, 70.f,
+        sf::Color(35, 145, 235));
+
+    int shown = frames / 45 + 1;        
+    if (shown > numberOfPlayers)
+        shown = numberOfPlayers;
+
+    for (int i = 0; i < shown; i++)
+    {
+        float y = 190.f + i * 100.f;
+
+        sf::CircleShape face(35.f);
+        face.setOrigin({ 35.f, 35.f });
+        face.setPosition({ 300.f, y });
+        face.setFillColor(getCharacterColor(players[i].character));
+        face.setOutlineColor(sf::Color::White);
+        face.setOutlineThickness(4);
+        window.draw(face);
+
+        drawText(window, font,
+            players[i].name + " is " + characterName(players[i].character),
+            34, 620.f, y, sf::Color::Black);
+    }
+
+    
+    if (frames >= numberOfPlayers * 45)
+        drawButton(window, font, "PLAY", 350.f, 620.f, 300.f, 70.f,
+            sf::Color(65, 180, 100));
+}
 int consoleMain()
 {
     srand(time(0));
@@ -1120,12 +1315,6 @@ int main()
 {
     srand(time(0));
 
-    int numberOfPlayers = 2;
-
-    string names[MAX_PLAYERS] = { "Minahil", "Fatima", "Player 3", "Player 4" };
-    Player players[MAX_PLAYERS];
-    setupGame(players, names, numberOfPlayers);
-
     sf::RenderWindow window(sf::VideoMode({ 1000, 720 }), "DORUDO");
     window.setFramerateLimit(60);
 
@@ -1133,6 +1322,18 @@ int main()
     if (!font.openFromFile("C:/Windows/Fonts/arial.ttf"))
         return 1;
 
+    // which screen we are on, and how many frames we have been on it
+    Screen screen = INTRO;
+    int frames = 0;
+    bool afterStart = false;      // true = instructions opened from Start Game
+
+    // setup screen information
+    int numberOfPlayers = 2;
+    string names[MAX_PLAYERS] = { "", "", "", "" };
+    int activeBox = 0;
+    Player players[MAX_PLAYERS];
+
+    // game information
     DiceState dice = createDice();
     int currentPlayer = 0;
     bool gameFinished = false;
@@ -1144,18 +1345,133 @@ int main()
 
     while (window.isOpen())
     {
+        // ---------- 1. events (mouse, keyboard, close) ----------
         while (const std::optional event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
                 window.close();
 
+            // typing the names (only on the setup screen)
+            if (screen == SETUP)
+            {
+                if (const auto* typed = event->getIf<sf::Event::TextEntered>())
+                {
+                    char32_t c = typed->unicode;
+
+                    if (c == 8)                         // Backspace
+                    {
+                        if (!names[activeBox].empty())
+                            names[activeBox].pop_back();
+                    }
+                    else if (c == 13)                   // Enter
+                    {
+                        activeBox = (activeBox + 1) % numberOfPlayers;
+                    }
+                    else if (c >= 32 && c < 127 && names[activeBox].size() < 12)
+                    {
+                        names[activeBox] += (char)c;
+                    }
+                }
+            }
+
+            // mouse clicks
             if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>())
             {
-                if (click->button == sf::Mouse::Button::Left &&
-                    !gameFinished && !movement.active)
+                if (click->button != sf::Mouse::Button::Left)
+                    continue;
+
+                float mx = (float)click->position.x;
+                float my = (float)click->position.y;
+
+                if (screen == INTRO)
                 {
-                    if (clickedRollButton((float)click->position.x,
-                        (float)click->position.y))
+                    screen = MENU;                      // click = skip intro
+                    frames = 0;
+                }
+                else if (screen == MENU)
+                {
+                    if (isInside(mx, my, 350, 300, 300, 70))        // START GAME
+                    {
+                        afterStart = true;
+                        screen = INSTRUCTIONS;
+                        frames = 0;
+                    }
+                    else if (isInside(mx, my, 350, 400, 300, 70))   // INSTRUCTIONS
+                    {
+                        afterStart = false;
+                        screen = INSTRUCTIONS;
+                        frames = 0;
+                    }
+                    else if (isInside(mx, my, 350, 500, 300, 70))   // EXIT GAME
+                    {
+                        window.close();
+                    }
+                }
+                else if (screen == INSTRUCTIONS)
+                {
+                    if (isInside(mx, my, 350, 600, 300, 70))
+                    {
+                        if (afterStart)
+                            screen = SETUP;
+                        else
+                            screen = MENU;
+                        frames = 0;
+                    }
+                }
+                else if (screen == SETUP)
+                {
+                    // number of players buttons
+                    for (int k = 0; k < 3; k++)
+                    {
+                        if (isInside(mx, my, 300.f + k * 130.f, 110, 110, 60))
+                        {
+                            numberOfPlayers = k + 2;
+                            activeBox = 0;
+                        }
+                    }
+
+                    // name boxes
+                    for (int i = 0; i < numberOfPlayers; i++)
+                    {
+                        if (isInside(mx, my, 300, 235.f + i * 75.f, 400, 55))
+                            activeBox = i;
+                    }
+
+                    // START button
+                    if (isInside(mx, my, 350, 600, 300, 70))
+                    {
+                        for (int i = 0; i < numberOfPlayers; i++)
+                        {
+                            if (names[i] == "")
+                                names[i] = "Player " + to_string(i + 1);
+                        }
+
+                        setupGame(players, names, numberOfPlayers);  // random characters
+                        screen = REVEAL;
+                        frames = 0;
+                    }
+                }
+                else if (screen == REVEAL)
+                {
+                    if (frames >= numberOfPlayers * 45 &&
+                        isInside(mx, my, 350, 620, 300, 70))
+                    {
+                        // start a fresh game
+                        dice = createDice();
+                        currentPlayer = 0;
+                        gameFinished = false;
+                        movement.active = false;
+                        sixesInRow = 0;
+                        rollProcessed = false;
+
+                        screen = PLAYING;
+                        frames = 0;
+                    }
+                }
+                else if (screen == PLAYING && !gameFinished && !movement.active)
+                {
+                    // click on the ROLL button
+                    if (clickedRollButton(mx, my))
                     {
                         if (!dice.rolling && dice.result == 0)
                         {
@@ -1163,6 +1479,7 @@ int main()
                             rollProcessed = false;
                         }
                     }
+                    // click on a token (only after the dice has stopped)
                     else if (dice.result > 0 && rollProcessed)
                     {
                         int tokenIndex = getClickedToken(window, players, currentPlayer);
@@ -1180,65 +1497,107 @@ int main()
             }
         }
 
-        updateDice(dice);
+        if (!window.isOpen())
+            break;
 
-        if (!gameFinished && !dice.rolling && dice.result > 0 && !rollProcessed)
+        frames++;
+
+        // ---------- 2. the intro moves to the menu by itself ----------
+        if (screen == INTRO && frames > 240)
         {
-            rollProcessed = true;
+            screen = MENU;
+            frames = 0;
+        }
 
-            if (dice.result == 6)
-                sixesInRow++;
+        // ---------- 3. game logic (only while playing) ----------
+        if (screen == PLAYING)
+        {
+            updateDice(dice);
 
-            if (sixesInRow == 3)
+            // the dice has just stopped
+            if (!gameFinished && !dice.rolling && dice.result > 0 && !rollProcessed)
             {
-                cout << "Three 6s in a row. Turn cancelled!" << endl;
+                rollProcessed = true;
 
-                dice.result = 0;
-                sixesInRow = 0;
+                if (dice.result == 6)
+                    sixesInRow++;
 
-                currentPlayer = nextPlayer(players, numberOfPlayers, currentPlayer);
-            }
-            else if (!hasLegalMove(players[currentPlayer], dice.result))
-            {
-                cout << "No legal moves!" << endl;
-
-                int result = dice.result;
-                dice.result = 0;
-
-                if (result != 6)
+                if (sixesInRow == 3)
                 {
+                    cout << "Three 6s in a row. Turn cancelled!" << endl;
+
+                    dice.result = 0;
                     sixesInRow = 0;
 
                     currentPlayer = nextPlayer(players, numberOfPlayers, currentPlayer);
                 }
+                else if (!hasLegalMove(players[currentPlayer], dice.result))
+                {
+                    cout << "No legal moves!" << endl;
+
+                    int result = dice.result;
+                    dice.result = 0;
+
+                    if (result != 6)
+                    {
+                        sixesInRow = 0;
+
+                        currentPlayer = nextPlayer(players, numberOfPlayers, currentPlayer);
+                    }
+                }
             }
-        }
 
-        if (!gameFinished && movement.active)
-        {
-            bool moveFinished = updateTokenMovement(players, numberOfPlayers);
-
-            if (moveFinished)
+            // token moving step by step
+            if (!gameFinished && movement.active)
             {
-                int result = dice.result;
-                dice.result = 0;
+                bool moveFinished = updateTokenMovement(players, numberOfPlayers);
 
-                gameFinished = finishPlayerTurn(players, numberOfPlayers,
-                    currentPlayer, result);
+                if (moveFinished)
+                {
+                    int result = dice.result;
+                    dice.result = 0;
+
+                    gameFinished = finishPlayerTurn(players, numberOfPlayers,
+                        currentPlayer, result);
+                }
             }
         }
 
-        window.clear(sf::Color(250, 248, 240));
-
-        drawBoard(window);
-        drawTokens(window, players, numberOfPlayers);
-        drawPanel(window);
-
-        if (!gameFinished)
+        // ---------- 4. draw the current screen ----------
+        if (screen == INTRO)
         {
-            drawTurnIndicator(window, font, players[currentPlayer]);
-            drawDice(window, font, dice);
-            drawRollButton(window, font, dice.rolling);
+            drawIntro(window, font, frames);
+        }
+        else if (screen == MENU)
+        {
+            drawMenu(window, font);
+        }
+        else if (screen == INSTRUCTIONS)
+        {
+            drawInstructions(window, font, afterStart);
+        }
+        else if (screen == SETUP)
+        {
+            drawSetup(window, font, numberOfPlayers, names, activeBox);
+        }
+        else if (screen == REVEAL)
+        {
+            drawReveal(window, font, players, numberOfPlayers, frames);
+        }
+        else if (screen == PLAYING)
+        {
+            window.clear(sf::Color(250, 248, 240));
+
+            drawBoard(window);
+            drawTokens(window, players, numberOfPlayers);
+            drawPanel(window);
+
+            if (!gameFinished)
+            {
+                drawTurnIndicator(window, font, players[currentPlayer]);
+                drawDice(window, font, dice);
+                drawRollButton(window, font, dice.rolling);
+            }
         }
 
         window.display();
