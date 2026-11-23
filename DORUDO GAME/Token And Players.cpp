@@ -9,7 +9,8 @@
 // Step 8 (Both): testing and fixes
 // Step 9 (Fatima): Board and Token drawings
 // Step 10 (Minahil): Roll Button, Dice Animation and Turn Indicator
-
+// Step 11 (Fatima): Allowing players click a token to move it and linking to step  4 to 6 
+// Step 12(Minahil) : Make the screens intro, main menu, instructions and setup screen
 #include <iostream>
 #include <string>
 #include <cstdlib>
@@ -931,6 +932,164 @@ void drawTurnIndicator(sf::RenderWindow& window, sf::Font& font, Player player)
     drawText(window, font, player.name, 22,
         860.f, 285.f, sf::Color(90, 90, 90));
 }
+//STEP 11 (Fatima)
+
+struct MoveAnimation
+{
+    bool active;
+    int playerIndex;
+    int tokenIndex;
+    int targetStep;
+    sf::Clock timer;
+};
+
+MoveAnimation movement;
+
+int sixesInRow = 0;
+bool rollProcessed = false;
+
+sf::Vector2f getTokenPosition(Player players[],
+    int playerIndex, int tokenIndex)
+{
+    Character character = players[playerIndex].character;
+
+    int steps = players[playerIndex].tokens[tokenIndex].stepsTaken;
+
+    int position = getBoardPosition(character, steps);
+
+    sf::Vector2f center;
+
+    if (position == -1)
+    {
+        sf::Vector2i yard = yardCenters[character][tokenIndex];
+        center = cellCenter(yard.x, yard.y);
+    }
+    else if (position >= 0 && position < TRACK_SIZE)
+    {
+        sf::Vector2i track = trackCells[position];
+        center = cellCenter(track.x, track.y);
+    }
+    else if (steps >= 52 && steps <= 56)
+    {
+        int index = steps - 52;
+        sf::Vector2i home = homeCells[character][index];
+        center = cellCenter(home.x, home.y);
+    }
+    else
+    {
+        return { -1000, -1000 };
+    }
+
+    float offsetsX[4] = { -5, 5, -5, 5 };
+    float offsetsY[4] = { -5, -5, 5, 5 };
+
+    center.x += offsetsX[tokenIndex];
+    center.y += offsetsY[tokenIndex];
+
+    return center;
+}
+
+int getClickedToken(sf::RenderWindow& window,
+    Player players[], int currentPlayer)
+{
+    sf::Vector2i mouse = sf::Mouse::getPosition(window);
+
+    for (int i = 0; i < TOKENS_PER_PLAYER; i++)
+    {
+        sf::Vector2f position =
+            getTokenPosition(players, currentPlayer, i);
+
+        float dx = mouse.x - position.x;
+        float dy = mouse.y - position.y;
+
+        if (dx * dx + dy * dy <= 20 * 20)
+            return i;
+    }
+
+    return -1;
+}
+
+bool startTokenMovement(Player players[],
+    int currentPlayer, int tokenIndex, int diceResult)
+{
+    if (!canTokenMove(
+        players[currentPlayer].tokens[tokenIndex],
+        diceResult))
+    {
+        return false;
+    }
+
+    movement.active = true;
+    movement.playerIndex = currentPlayer;
+    movement.tokenIndex = tokenIndex;
+
+    int currentStep =
+        players[currentPlayer].tokens[tokenIndex].stepsTaken;
+
+    if (currentStep == 0)
+        movement.targetStep = 1;
+    else
+        movement.targetStep = currentStep + diceResult;
+
+    movement.timer.restart();
+
+    return true;
+}
+
+bool updateTokenMovement(Player players[],
+    int numberOfPlayers)
+{
+    if (!movement.active)
+        return false;
+
+    if (movement.timer.getElapsedTime().asMilliseconds() < 120)
+        return false;
+
+    movement.timer.restart();
+
+    int p = movement.playerIndex;
+    int t = movement.tokenIndex;
+
+    players[p].tokens[t].stepsTaken++;
+
+    if (players[p].tokens[t].stepsTaken >= movement.targetStep)
+    {
+        movement.active = false;
+
+        captureTokens(players, p, numberOfPlayers, t);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool finishPlayerTurn(Player players[],
+    int numberOfPlayers, int& currentPlayer, int diceResult)
+{
+    updateRanks(players, numberOfPlayers);
+
+    if (isGameOver(players, numberOfPlayers))
+    {
+        giveLastRank(players, numberOfPlayers);
+        printResults(players, numberOfPlayers);
+
+        return true;
+    }
+
+    if (diceResult != 6 || players[currentPlayer].finished)
+    {
+        sixesInRow = 0;
+
+        currentPlayer = nextPlayer(
+            players, numberOfPlayers, currentPlayer
+        );
+    }
+
+    return false;
+}
+
+
 int consoleMain()
 {
     srand(time(0));
@@ -961,16 +1120,11 @@ int main()
 {
     srand(time(0));
 
-    int numberOfPlayers = 4;
+    int numberOfPlayers = 2;
 
     string names[MAX_PLAYERS] = { "Minahil", "Fatima", "Player 3", "Player 4" };
     Player players[MAX_PLAYERS];
     setupGame(players, names, numberOfPlayers);
-
-    players[0].tokens[0].stepsTaken = 1;
-    players[0].tokens[1].stepsTaken = 20;
-    players[1].tokens[0].stepsTaken = 54;
-    players[2].tokens[0].stepsTaken = 30;
 
     sf::RenderWindow window(sf::VideoMode({ 1000, 720 }), "DORUDO");
     window.setFramerateLimit(60);
@@ -980,7 +1134,13 @@ int main()
         return 1;
 
     DiceState dice = createDice();
-    int current = 0;
+    int currentPlayer = 0;
+    bool gameFinished = false;
+
+    movement.active = false;
+    movement.playerIndex = 0;
+    movement.tokenIndex = 0;
+    movement.targetStep = 0;
 
     while (window.isOpen())
     {
@@ -992,28 +1152,95 @@ int main()
             if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>())
             {
                 if (click->button == sf::Mouse::Button::Left &&
-                    !dice.rolling &&
-                    clickedRollButton((float)click->position.x,
-                        (float)click->position.y))
+                    !gameFinished && !movement.active)
                 {
-                    startRoll(dice);
+                    if (clickedRollButton((float)click->position.x,
+                        (float)click->position.y))
+                    {
+                        if (!dice.rolling && dice.result == 0)
+                        {
+                            startRoll(dice);
+                            rollProcessed = false;
+                        }
+                    }
+                    else if (dice.result > 0 && rollProcessed)
+                    {
+                        int tokenIndex = getClickedToken(window, players, currentPlayer);
+
+                        if (tokenIndex != -1)
+                        {
+                            if (!startTokenMovement(players, currentPlayer,
+                                tokenIndex, dice.result))
+                            {
+                                cout << "This token cannot move!" << endl;
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        if (updateDice(dice))
+        updateDice(dice);
+
+        if (!gameFinished && !dice.rolling && dice.result > 0 && !rollProcessed)
         {
-            if (dice.result != 6)
-                current = nextPlayer(players, numberOfPlayers, current);
+            rollProcessed = true;
+
+            if (dice.result == 6)
+                sixesInRow++;
+
+            if (sixesInRow == 3)
+            {
+                cout << "Three 6s in a row. Turn cancelled!" << endl;
+
+                dice.result = 0;
+                sixesInRow = 0;
+
+                currentPlayer = nextPlayer(players, numberOfPlayers, currentPlayer);
+            }
+            else if (!hasLegalMove(players[currentPlayer], dice.result))
+            {
+                cout << "No legal moves!" << endl;
+
+                int result = dice.result;
+                dice.result = 0;
+
+                if (result != 6)
+                {
+                    sixesInRow = 0;
+
+                    currentPlayer = nextPlayer(players, numberOfPlayers, currentPlayer);
+                }
+            }
+        }
+
+        if (!gameFinished && movement.active)
+        {
+            bool moveFinished = updateTokenMovement(players, numberOfPlayers);
+
+            if (moveFinished)
+            {
+                int result = dice.result;
+                dice.result = 0;
+
+                gameFinished = finishPlayerTurn(players, numberOfPlayers,
+                    currentPlayer, result);
+            }
         }
 
         window.clear(sf::Color(250, 248, 240));
+
         drawBoard(window);
         drawTokens(window, players, numberOfPlayers);
         drawPanel(window);
-        drawTurnIndicator(window, font, players[current]);
-        drawDice(window, font, dice);
-        drawRollButton(window, font, dice.rolling);
+
+        if (!gameFinished)
+        {
+            drawTurnIndicator(window, font, players[currentPlayer]);
+            drawDice(window, font, dice);
+            drawRollButton(window, font, dice.rolling);
+        }
+
         window.display();
     }
 
