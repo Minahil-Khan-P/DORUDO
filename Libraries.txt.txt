@@ -1,0 +1,16 @@
+Libraries used in DORUDO
+
+1. SFML (Simple and Fast Multimedia Library)
+   Version  : 3.0.2
+   Package  : Visual C++ 17 (2022) - 64-bit
+   Website  : https://www.sfml-dev.org
+   Used for : window, drawing (shapes, text), mouse and keyboard events, sounds and music
+   Modules  : sfml-graphics, sfml-window, sfml-system, sfml-audio
+   Location : lib/SFML (include, lib and bin folders)
+
+2. C++ Standard Library (comes with the compiler)
+   Used for : iostream, string, cstdlib, ctime
+
+Other requirements
+   Compiler : Microsoft Visual C++ (Visual Studio 2022), C++17
+   OS       : Windows 10/11, 64-bit
