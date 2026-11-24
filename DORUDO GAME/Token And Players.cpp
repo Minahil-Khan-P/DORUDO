@@ -485,28 +485,4 @@ void printResults(Player players[], int numberOfPlayers)
     }
 }
 
-int main()
-{
-    srand(time(0));
 
-    int numberOfPlayers = 2;
-
-    string names[MAX_PLAYERS] = { "Minahil", "Fatima", "Player 3", "Player 4" };
-    Player players[MAX_PLAYERS];
-    setupGame(players, names, numberOfPlayers);
-
-    int current = 0;
-
-    while (!isGameOver(players, numberOfPlayers))
-    {
-        cout << endl << players[current].name << "'s turn" << endl;
-        playTurn(players, numberOfPlayers, current);
-        updateRanks(players, numberOfPlayers);
-        current = nextPlayer(players, numberOfPlayers, current);
-    }
-
-    giveLastRank(players, numberOfPlayers);
-    printResults(players, numberOfPlayers);
-
-    return 0;
-}
